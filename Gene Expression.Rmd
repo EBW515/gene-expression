@@ -1,0 +1,103 @@
+---
+title: "Stat 184" 
+subtitle: "Gene Expression Activity"
+author: "Eric Weah"
+output: html_notebook
+---
+
+
+figure 17.1
+
+The tissue colum could be better grouped or summed, its just showing the same value. To me there seems to be no point of it being there.
+
+```{r}
+rm(list = ls())
+library(mosaic)
+library(tidyr)
+library(DataComputing)
+library(rvest)
+library(lubridate)
+library(dplyr)
+library(tidyverse)
+
+```
+
+```{r}
+Narrow <-
+  NCI60 %>%
+  tidyr::gather(cellLine, expression, -Probe)
+CellTypes <-
+  NCI60cells %>%
+  select(cellLine, tissue) %>%
+  mutate(cellLine = gsub("\\:",".", as.character(cellLine)))
+Narrow <- 
+  Narrow %>%
+  inner_join(CellTypes)
+Probe_TOP3A <-
+  Narrow %>%
+  filter(Probe=="TOP3A")
+SummaryStats <-
+  Probe_TOP3A %>%
+  group_by(tissue) %>%
+  summarise(mn_expr = exp(mean(expression, na.rm = TRUE)))
+```
+
+```{r}
+SummaryStats %>% 
+  ggplot(aes(x = tissue, y = mn_expr)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+
+```{r}
+Probe_TOP3A %>% 
+ggplot(aes(x = tissue, y = exp(expression))) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 30, hjust=1))
+```
+
+```{r}
+SummaryStats %>% 
+  ggplot(aes(x = tissue, y = exp(mn_expr))) +
+  geom_bar(stat = "identity", fill="gray", color=NA) +
+  geom_point(data = Probe_TOP3A, aes(x=tissue, y=exp(expression))) + 
+  theme(axis.text.x = element_text(angle = 30, hjust=1))
+```
+
+```{r}
+SummaryStats <-  
+      SummaryStats %>%  
+      mutate(tissue = reorder(tissue, mn_expr))  
+SummaryStats <-
+  Probe_TOP3A %>%
+  group_by(tissue) %>%
+  summarise(mn_expr = mean(expression,  na.rm = TRUE),
+            se = sd(expression, na.rm = TRUE) / sqrt(n())) 
+```
+
+
+
+```{r}
+SummaryStats <- 
+  SummaryStats %>%
+  mutate(top = mn_expr + 2 * se,
+         bottom = mn_expr - 2 * se) 
+SummaryStats %>%
+  ggplot(aes(x = tissue, y = exp(mn_expr))) +
+  geom_bar(stat = "identity", alpha=0.2) +
+  geom_errorbar(aes(x = tissue, 
+                    ymax = exp(top), 
+                    ymin =exp(bottom)), width=0.5) +
+  theme(axis.text.x = element_text(angle = 30, hjust=1))
+```
+
+```{r}
+SummaryStats <- 
+  SummaryStats %>%
+  mutate(top = mn_expr + 2 * se,
+         bottom = mn_expr - 2 * se) 
+SummaryStats %>%
+  ggplot(aes(x = tissue, y = exp(mn_expr))) +
+  geom_point()
+```
